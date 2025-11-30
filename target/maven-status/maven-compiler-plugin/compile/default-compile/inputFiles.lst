@@ -12,7 +12,10 @@ C:\Users\vengadesh\od-attendance-app\src\main\java\com\odapp\attendance\reposito
 C:\Users\vengadesh\od-attendance-app\src\main\java\com\odapp\attendance\controllers\AttendanceController.java
 C:\Users\vengadesh\od-attendance-app\src\main\java\com\odapp\attendance\controllers\EventController.java
 C:\Users\vengadesh\od-attendance-app\src\main\java\com\odapp\attendance\models\OrganizerUser.java
+C:\Users\vengadesh\od-attendance-app\src\main\java\com\odapp\attendance\config\InitialDataSeeder.java
 C:\Users\vengadesh\od-attendance-app\src\main\java\com\odapp\attendance\models\Event.java
 C:\Users\vengadesh\od-attendance-app\src\main\java\com\odapp\attendance\AttendanceSystemApplication.java
 C:\Users\vengadesh\od-attendance-app\src\main\java\com\odapp\attendance\repositories\EventRepository.java
 C:\Users\vengadesh\od-attendance-app\src\main\java\com\odapp\attendance\utils\DistanceUtils.java
+C:\Users\vengadesh\od-attendance-app\src\main\java\com\odapp\attendance\config\WebSecurityConfig.java
+C:\Users\vengadesh\od-attendance-app\src\main\java\com\odapp\attendance\services\OrganizerUserDetailsService.java
