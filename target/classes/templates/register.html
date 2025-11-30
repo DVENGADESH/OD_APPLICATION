@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Registration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+<div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+    <h1 class="text-2xl font-bold mb-6 text-center">Event Registration</h1>
+    <form id="registrationForm">
+        <div class="mb-4">
+            <label for="name" class="block text-gray-700">Name</label>
+            <input type="text" id="name" name="name" class="w-full px-3 py-2 border rounded-lg" required>
+        </div>
+        <div class="mb-4">
+            <label for="rollNumber" class="block text-gray-700">Roll Number</label>
+            <input type="text" id="rollNumber" name="rollNumber" class="w-full px-3 py-2 border rounded-lg" required>
+        </div>
+        <div class="mb-4">
+            <label for="email" class="block text-gray-700">Email</label>
+            <input type="email" id="email" name="email" class="w-full px-3 py-2 border rounded-lg" required>
+        </div>
+        <button type="submit" id="registerButton" class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50">Register</button>
+    </form>
+    <p id="message" class="mt-4 text-center"></p>
+</div>
+
+<script>
+    document.getElementById('registrationForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const eventId = window.location.pathname.split('/').pop();
+        const name = document.getElementById('name').value;
+        const rollNumber = document.getElementById('rollNumber').value;
+        const email = document.getElementById('email').value;
+        const messageEl = document.getElementById('message');
+        const registerButton = document.getElementById('registerButton'); // Get button element
+
+        registerButton.disabled = true; // 🛑 FIX 1: Disable button immediately on click
+        messageEl.textContent = 'Processing registration...';
+        messageEl.classList.remove('text-green-500', 'text-red-500');
+
+
+        const apiUrl = `/api/events/register/${eventId}`;
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ rollNumber, name, email })
+            });
+
+            const result = await response.text();
+
+            if (response.ok) {
+                if (result.startsWith("Registered")) {
+                    messageEl.textContent = '🎉 Registration successful! You will receive your check-in links via email shortly.';
+                    // Clear form fields only on successful NEW registration
+                    document.getElementById('name').value = '';
+                    document.getElementById('rollNumber').value = '';
+                    document.getElementById('email').value = '';
+                } else if (result === "Already registered.") {
+                    messageEl.textContent = '✅ You are already registered for this event.';
+                } else {
+                    messageEl.textContent = result;
+                }
+
+                messageEl.classList.add('text-green-500');
+                // The button remains disabled only on a successful new registration to prevent re-submission.
+                // It remains disabled here for "Already registered" which is an OK state.
+
+            } else {
+                // For BAD_REQUEST (400) or other errors
+                messageEl.textContent = 'Registration failed: ' + result;
+                messageEl.classList.add('text-red-500');
+                registerButton.disabled = false; // 🛑 FIX 2: Re-enable on failure
+            }
+        } catch (error) {
+            messageEl.textContent = 'Network error or server connection failed.';
+            messageEl.classList.add('text-red-500');
+            registerButton.disabled = false; // 🛑 FIX 3: Re-enable on network error
+        }
+    });
+</script>
+</body>
+</html>

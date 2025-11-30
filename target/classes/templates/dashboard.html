@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizer Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better aesthetics */
+        body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; }
+        .card { box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .ended { color: #f59e0b; font-weight: bold; } /* Tailwind yellow-600 */
+        .active { color: #10b981; font-weight: bold; } /* Tailwind emerald-500 */
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+<div class="max-w-7xl mx-auto">
+    <header class="mb-8 p-4 bg-white rounded-lg card flex justify-between items-center">
+        <h1 class="text-3xl font-extrabold text-indigo-700">OD Event Dashboard</h1>
+        <button onclick="triggerManualReport()"
+                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150">
+            Trigger OD Report
+        </button>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <div class="lg:col-span-1 bg-white p-6 rounded-lg card h-fit">
+            <h2 class="text-xl font-semibold mb-6 text-gray-800 border-b pb-2">1. Create New Event</h2>
+
+            <form id="event-creation-form" class="space-y-4">
+
+                <div>
+                    <label for="eventName" class="block text-sm font-medium text-gray-700">Event Name</label>
+                    <input type="text" id="eventName" name="eventName" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label for="eventDate" class="block text-sm font-medium text-gray-700">Date</label>
+                    <input type="date" id="eventDate" name="eventDate" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div class="border-t pt-4 space-y-3">
+                    <h3 class="text-md font-semibold text-gray-700">Geofence Location (Fraud Prevention)</h3>
+                    <p class="text-xs text-gray-500">Enter the exact coordinates of the event entrance. Radius: 0.5 KM.</p>
+                    <label for="lat" class="block text-sm font-medium text-gray-700">Latitude (e.g., 11.0168)</label>
+                    <input type="number" step="any" id="lat" name="locationLat" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" placeholder="Fetching location...">
+
+                    <label for="lon" class="block text-sm font-medium text-gray-700">Longitude (e.g., 76.9558)</label>
+                    <input type="number" step="any" id="lon" name="locationLon" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" placeholder="Fetching location...">
+                </div>
+
+                <div class="border-t pt-4 space-y-3">
+                    <h3 class="text-md font-semibold text-gray-700">Event Sessions</h3>
+                    <div id="sessions-container" class="space-y-2">
+                    </div>
+                    <button type="button" onclick="addSessionInput()"
+                            class="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center">
+                        + Add Session
+                    </button>
+                </div>
+
+                <button type="submit"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-150 mt-4">
+                    Create & Get Registration Link
+                </button>
+
+                <div id="form-message" class="mt-4 p-2 text-center text-sm rounded-lg" style="display:none;"></div>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2 space-y-8">
+
+            <div class="bg-yellow-50 p-4 rounded-lg card border border-yellow-200">
+                <h2 class="text-xl font-semibold mb-2 text-gray-800">2. Automated Reporting Status</h2>
+                <p class="text-sm text-gray-600">The OD report scheduler runs automatically every day at 7:45 PM. Reports are sent to the corresponding batch tutors.</p>
+                <p id="report-status" class="mt-2 text-sm font-bold text-yellow-700">Status: Scheduler Running (Awaiting 7:45 PM Trigger)</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg card">
+                <h2 class="text-xl font-semibold mb-6 text-gray-800 border-b pb-2">3. Latest Events</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date/Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reg. Link</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                        </tr>
+                        </thead>
+                        <tbody id="events-table-body" class="bg-white divide-y divide-gray-200">
+                        <tr th:each="event : ${events}" th:id="'event-row-' + ${event.id}">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" th:text="${event.id}">1</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" th:text="${event.eventName}">Tech Symposium</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span th:text="${event.eventDate}">2025-10-30</span>
+                                <span th:if="${event.isCompleted()}" class="ended">(ENDED)</span>
+                                <span th:if="${!event.isCompleted()}" class="active">(ACTIVE)</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 hover:text-indigo-800">
+                                <a th:href="@{'/register/' + ${event.id}}">Copy Link</a>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <button th:if="${!event.isCompleted()}"
+                                        th:onclick="'markEventCompleted(' + ${event.id} + ')'"
+                                        class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-lg text-xs transition duration-150">
+                                    Mark Completed
+                                </button>
+                                <span th:if="${event.isCompleted()}" class="text-green-600 font-medium text-xs">Processed</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <div th:if="${#lists.isEmpty(events)}" class="text-center py-4 text-gray-500">
+                        No events found. Create one above!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Utility function to get the CSRF token from the browser cookie
+    function getCsrfToken() {
+        const name = "XSRF-TOKEN=";
+        const decodedCookie = decodeURIComponent(document.cookie);
+        const ca = decodedCookie.split(';');
+        for(let i = 0; i <ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) == ' ') {
+                c = c.substring(1);
+            }
+            if (c.indexOf(name) == 0) {
+                return c.substring(name.length, c.length);
+            }
+        }
+        return "";
+    }
+
+    // 🚀 NEW FUNCTION: Fetches and sets default location automatically
+    function fetchDefaultLocation() {
+        const latInput = document.getElementById('lat');
+        const lonInput = document.getElementById('lon');
+
+        if (navigator.geolocation) {
+            latInput.placeholder = "Fetching location...";
+            lonInput.placeholder = "Fetching location...";
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    // Success: Populate the fields with accurate location
+                    latInput.value = position.coords.latitude.toFixed(6);
+                    lonInput.value = position.coords.longitude.toFixed(6);
+                    latInput.placeholder = "Location set automatically";
+                    lonInput.placeholder = "Location set automatically";
+                },
+                (error) => {
+                    // Error: Show instructions instead of crashing
+                    console.error("Geolocation Error for Dashboard:", error);
+                    alert("Could not automatically determine location. Please enter coordinates manually.");
+                    latInput.placeholder = "Enter Latitude manually";
+                    lonInput.placeholder = "Enter Longitude manually";
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        } else {
+            alert("Geolocation is not supported by this browser. Please enter coordinates manually.");
+            latInput.placeholder = "Enter Latitude manually";
+            lonInput.placeholder = "Enter Longitude manually";
+        }
+    }
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // 🚀 NEW CALL: Attempt to fetch location when the page loads
+        fetchDefaultLocation();
+
+        if (document.getElementById('sessions-container').children.length === 0) {
+            addSessionInput();
+        }
+    });
+
+    // Function to dynamically add session inputs
+    let sessionCounter = 0;
+    function addSessionInput() {
+        sessionCounter++;
+        const container = document.getElementById('sessions-container');
+        const sessionId = `session-${sessionCounter}`;
+
+        const sessionDiv = document.createElement('div');
+        sessionDiv.id = sessionId;
+        sessionDiv.className = 'flex space-x-2 items-center';
+        sessionDiv.innerHTML = `
+                <input type="text" placeholder="Session Name (e.g., Morning)" id="name-${sessionId}"
+                    class="w-2/5 p-2 border rounded-md" required>
+                <input type="time" placeholder="Start Time" id="start-${sessionId}"
+                    class="w-1/4 p-2 border rounded-md" required>
+                <input type="time" placeholder="End Time" id="end-${sessionId}"
+                    class="w-1/4 p-2 border rounded-md" required>
+                <button type="button" onclick="removeSessionInput('${sessionId}')" class="text-red-500 hover:text-red-700 text-lg">
+                    &times;
+                </button>
+            `;
+        container.appendChild(sessionDiv);
+    }
+
+    // Function to remove session inputs
+    function removeSessionInput(id) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.remove();
+        }
+    }
+
+    // API Call to Mark Event as Completed (Requires CSRF Token)
+    async function markEventCompleted(eventId) {
+        const confirmed = confirm('Are you sure you want to mark Event ID ' + eventId + ' as completed? This action cannot be undone.');
+        if (!confirmed) return;
+
+        // Get the CSRF token
+        const csrfToken = getCsrfToken();
+
+        try {
+            const response = await fetch('/api/events/complete/' + eventId, {
+                method: 'POST',
+                headers: {
+                    'X-XSRF-TOKEN': csrfToken // Include CSRF token in the header
+                }
+            });
+            const result = await response.text();
+
+            if (response.ok) {
+                alert('Success: ' + result);
+                // Dynamically update the row status without full page reload
+                const row = document.getElementById('event-row-' + eventId);
+                if (row) {
+                    // Update the Date/Status cell
+                    const statusCell = row.cells[2];
+                    const dateText = statusCell.querySelector('span').textContent;
+                    statusCell.innerHTML = `<span class="text-gray-500">${dateText}</span> <span class="ended">(ENDED)</span>`;
+
+                    // Update the Action cell
+                    const actionCell = row.cells[4];
+                    actionCell.innerHTML = '<span class="text-green-600 font-medium text-xs">Processed</span>';
+                }
+            } else {
+                alert('Error marking event complete: ' + result);
+            }
+
+        } catch (error) {
+            alert('Network error: Could not connect to server.');
+        }
+    }
+
+
+    // Manual Trigger for Scheduler (for testing only)
+    async function triggerManualReport() {
+        const statusEl = document.getElementById('report-status');
+        statusEl.textContent = 'Triggering Report...';
+        statusEl.classList.remove('text-red-700');
+        statusEl.classList.add('text-yellow-700');
+
+        try {
+            const response = await fetch('/admin/trigger-report', { method: 'GET' });
+            const result = await response.text();
+
+            statusEl.textContent = 'Status: ' + result;
+            statusEl.classList.remove('text-yellow-700');
+            statusEl.classList.add(response.ok ? 'text-green-700' : 'text-red-700');
+
+        } catch (error) {
+            console.error("Manual report trigger failed:", error);
+            statusEl.textContent = 'Status: Failed to connect to backend service.';
+            statusEl.classList.remove('text-yellow-700');
+            statusEl.classList.add('text-red-700');
+        }
+    }
+
+
+    // Form Submission Logic
+    document.getElementById('event-creation-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const sessionsContainer = document.getElementById('sessions-container');
+
+        let sessions = [];
+        let isValid = true;
+
+        // Gather all session data
+        Array.from(sessionsContainer.children).forEach((div, index) => {
+            const nameInput = div.querySelector('input[placeholder="Session Name (e.g., Morning)"]');
+            const startInput = div.querySelector('input[placeholder="Start Time"]');
+            const endInput = div.querySelector('input[placeholder="End Time"]');
+
+            if (nameInput && startInput && endInput) {
+                sessions.push({
+                    sessionId: `S${index + 1}_${nameInput.value.toUpperCase().replace(/\s/g, '')}`,
+                    sessionName: nameInput.value,
+                    startTime: startInput.value,
+                    endTime: endInput.value
+                });
+            } else {
+                isValid = false;
+            }
+        });
+
+        if (!isValid || sessions.length === 0) {
+            alert('Please ensure all session fields are filled and at least one session exists.');
+            return;
+        }
+
+        const eventData = {
+            eventName: form.eventName.value,
+            eventDate: form.eventDate.value,
+            locationLat: parseFloat(form.locationLat.value),
+            locationLon: parseFloat(form.locationLon.value),
+            sessions: sessions
+        };
+
+        const messageDiv = document.getElementById('form-message');
+        messageDiv.style.display = 'block';
+        messageDiv.innerHTML = 'Processing...';
+
+        // --- API Call to Create Event (Requires CSRF Token) ---
+        const csrfToken = getCsrfToken();
+
+        try {
+            const response = await fetch('/api/events/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': csrfToken // Include CSRF token
+                },
+                body: JSON.stringify(eventData)
+            });
+
+            if (response.ok) {
+                const newId = await response.json();
+                const regLink = `http://localhost:8080/register/${newId}`;
+
+                messageDiv.style.backgroundColor = '#d1e7dd';
+                messageDiv.style.color = '#0f5132';
+                messageDiv.innerHTML = `Event **ID ${newId}** created successfully! Registration link: <a href="${regLink}" class="font-semibold underline">Click Here</a>`;
+
+                // RELOAD PAGE to show new row in the dynamic Thymeleaf table
+                setTimeout(() => window.location.reload(), 1000);
+
+            } else {
+                const errorText = await response.text();
+                // 🚀 FIX APPLIED HERE: Display the full server error response text
+                console.error("Server API Error Response:", errorText);
+
+                messageDiv.style.backgroundColor = '#f8d7da';
+                messageDiv.style.color = '#721c24';
+                // Provide a specific message and instruct the user to check the browser console
+                messageDiv.innerHTML = 'Error creating event. Check **browser console (F12)** for backend details. Server response: ' + errorText;
+            }
+
+        } catch (error) {
+            console.error("Network or JSON error:", error);
+            messageDiv.style.backgroundColor = '#f8d7da';
+            messageDiv.style.color = '#721c24';
+            messageDiv.innerHTML = 'Fatal error connecting to backend.';
+        }
+
+        form.reset();
+        sessionsContainer.innerHTML = ''; // Clear sessions
+        addSessionInput(); // Add one back
+    });
+</script>
+
+</body>
+</html>
